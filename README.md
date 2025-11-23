@@ -1,5 +1,5 @@
-# Snap.Hutao.SourceGeneration
-Source Code Generator for Snap.Hutao
+# Snap.Hutao.Remastered.SourceGeneration
+Source Code Generator for Snap.Hutao.Remastered
 
 # Development Guideline
 

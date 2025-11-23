@@ -50,9 +50,9 @@
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <DevelopmentDependency>true</DevelopmentDependency>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <Description>Source Code generator for Snap.Hutao</Description>
-    <RepositoryUrl>https://github.com/SnapHutaoRemasteringProject/Snap.Hutao.SourceGeneration</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/SnapHutaoRemasteringProject/Snap.Hutao.SourceGeneration</PackageProjectUrl>
+    <Description>Source Code generator for Snap.Hutao.Remastered</Description>
+    <RepositoryUrl>https://github.com/SnapHutaoRemasteringProject/Snap.Hutao.Remastered.SourceGeneration</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/SnapHutaoRemasteringProject/Snap.Hutao.Remastered.SourceGeneration</PackageProjectUrl>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
   </PropertyGroup>
 
