@@ -45,7 +45,7 @@ internal sealed class SaltConstantGenerator : IIncrementalGenerator
                 .WithLeadingTrivia(NullableEnableTriviaList)
                 .WithMembers(SingletonList<MemberDeclarationSyntax>(
                     ClassDeclaration("SaltConstants")
-                        .WithModifiers(InternalStaticTokenList)
+                        .WithModifiers(PublicStaticTokenList)
                         .WithMembers(List<MemberDeclarationSyntax>(
                         [
                             ConstStringFieldDeclaration("CNVersion", saltInfo.Data.CNVersion),

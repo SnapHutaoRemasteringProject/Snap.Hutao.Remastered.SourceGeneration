@@ -92,7 +92,7 @@ public sealed class ResxGenerator2 : IIncrementalGenerator
             .WithMembers(SingletonList<MemberDeclarationSyntax>(FileScopedNamespaceDeclaration(context.Namespace!)
                 .WithMembers(SingletonList<MemberDeclarationSyntax>(
                     ClassDeclaration(context.ClassName!)
-                        .WithModifiers(InternalAbstractPartialTokenList)
+                        .WithModifiers(PublicAbstractPartialTokenList)
                         .WithLeadingTrivia(NullableEnableTriviaList)
                         .WithMembers(List(
                         [
@@ -490,7 +490,7 @@ public sealed class ResxGenerator2 : IIncrementalGenerator
             .WithMembers(SingletonList<MemberDeclarationSyntax>(FileScopedNamespaceDeclaration(context.Namespace!)
                 .WithMembers(SingletonList<MemberDeclarationSyntax>(
                     EnumDeclaration($"{context.ClassName}Name")
-                        .WithModifiers(InternalTokenList)
+                        .WithModifiers(PublicTokenList)
                         .WithLeadingTrivia(NullableEnableTriviaList)
                         .WithMembers(SeparatedList(GenerateEnumMembers(context)))))))
             .NormalizeWhitespace();

@@ -17,7 +17,7 @@ internal static class AccessibilityExtension
             Accessibility.Private => PrivateTokenList,
             Accessibility.ProtectedAndInternal => PrivateProtectedTokenList,
             Accessibility.Protected => ProtectedTokenList,
-            Accessibility.Internal => InternalTokenList,
+            Accessibility.Internal => PublicTokenList,
             Accessibility.ProtectedOrInternal => ProtectedInternalTokenList,
             Accessibility.Public => PublicTokenList,
             _ => TokenList()

@@ -54,7 +54,7 @@ internal class ExtendedEnumGenerator : IIncrementalGenerator
                 .WithLeadingTrivia(NullableEnableTriviaList)
                 .WithMembers(SingletonList<MemberDeclarationSyntax>(
                     ClassDeclaration($"{context.Type.Name}Extension")
-                        .WithModifiers(InternalStaticPartialTokenList)
+                        .WithModifiers(PublicStaticPartialTokenList)
                         .WithMembers(List<MemberDeclarationSyntax>(
                         [
                             // public static string? GetName(this T value)

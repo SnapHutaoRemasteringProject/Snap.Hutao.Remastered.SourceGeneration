@@ -56,7 +56,7 @@ internal sealed class ServiceGenerator : IIncrementalGenerator
                 .WithLeadingTrivia(NullableEnableTriviaList)
                 .WithMembers(SingletonList<MemberDeclarationSyntax>(
                     ClassDeclaration("ServiceCollectionExtension")
-                        .WithModifiers(InternalStaticPartialTokenList)
+                        .WithModifiers(PublicStaticPartialTokenList)
                         .WithMembers(SingletonList<MemberDeclarationSyntax>(
                             MethodDeclaration(TypeOfMicrosoftExtensionsDependencyInjectionIServiceCollection, "AddServices")
                                 .WithModifiers(PublicStaticPartialTokenList)

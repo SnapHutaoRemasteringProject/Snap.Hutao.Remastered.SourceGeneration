@@ -81,7 +81,7 @@ internal sealed class IdentityGenerator : IIncrementalGenerator
                                         .WithArgumentList(AttributeArgumentList(SingletonSeparatedList(
                                             AttributeArgument(GenerateTypeOfIdentityConverterGenericExpression(metadataName)))))))
                                 .WithLeadingTrivia(trivia)))
-                        .WithModifiers(InternalReadOnlyPartialTokenList)
+                        .WithModifiers(PublicReadOnlyPartialTokenList)
                         .WithBaseList(BaseList(SeparatedList<BaseTypeSyntax>(
                         [
                             SimpleBaseType(TypeOfSystemIComparable),                                                                            // System.IComparable

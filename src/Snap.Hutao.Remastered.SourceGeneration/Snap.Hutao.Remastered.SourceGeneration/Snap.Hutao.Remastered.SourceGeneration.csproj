@@ -45,7 +45,7 @@
 
   <PropertyGroup>
     <PackageId>Snap.Hutao.Remastered.SourceGeneration</PackageId>
-    <Version>1.3.14.1</Version>
+    <Version>1.3.14.2</Version>
     <Authors>SnapHutaoRemasteringProject</Authors>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <DevelopmentDependency>true</DevelopmentDependency>

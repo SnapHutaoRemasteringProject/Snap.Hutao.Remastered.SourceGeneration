@@ -72,14 +72,14 @@ internal sealed class ApiEndpointsGenerator : IIncrementalGenerator
                     List<MemberDeclarationSyntax>(
                     [
                         InterfaceDeclaration(interfaceName)
-                            .WithModifiers(InternalPartialTokenList)
+                            .WithModifiers(PublicPartialTokenList)
                             .WithMembers(List(GenerateInterfaceMethods(context.Endpoints))),
                         ClassDeclaration(chineseImplName)
-                            .WithModifiers(InternalAbstractTokenList)
+                            .WithModifiers(PublicAbstractTokenList)
                             .WithBaseList(BaseList(SingletonSeparatedList<BaseTypeSyntax>(SimpleBaseType(interfaceIdentifier))))
                             .WithMembers(List(GenerateClassMethods(context.Endpoints, true))),
                         ClassDeclaration(overseaImplName)
-                            .WithModifiers(InternalAbstractTokenList)
+                            .WithModifiers(PublicAbstractTokenList)
                             .WithBaseList(BaseList(SingletonSeparatedList<BaseTypeSyntax>(SimpleBaseType(interfaceIdentifier))))
                             .WithMembers(List(GenerateClassMethods(context.Endpoints, false)))
                     ]))))

@@ -32,7 +32,7 @@ internal sealed class AttributeGenerator : IIncrementalGenerator
                 [
                     ClassDeclaration(Identifier("CommandAttribute"))
                         .WithAttributeLists(SingletonList(SystemAttributeUsageList(AttributeTargetsMethod, inherited: false)))
-                        .WithModifiers(InternalSealedTokenList)
+                        .WithModifiers(PublicSealedTokenList)
                         .WithBaseList(SystemAttributeBaseList)
                         .WithMembers(List<MemberDeclarationSyntax>(
                         [
@@ -55,7 +55,7 @@ internal sealed class AttributeGenerator : IIncrementalGenerator
                         ])),
                     ClassDeclaration(Identifier("GeneratedConstructorAttribute"))
                         .WithAttributeLists(SingletonList(SystemAttributeUsageList(AttributeTargetsConstructor, inherited: false)))
-                        .WithModifiers(InternalSealedTokenList)
+                        .WithModifiers(PublicSealedTokenList)
                         .WithBaseList(SystemAttributeBaseList)
                         .WithMembers(List<MemberDeclarationSyntax>(
                         [
@@ -71,11 +71,11 @@ internal sealed class AttributeGenerator : IIncrementalGenerator
                         ])),
                     ClassDeclaration(Identifier("BindableCustomPropertyProviderAttribute"))
                         .WithAttributeLists(SingletonList(SystemAttributeUsageList(AttributeTargetsClass, inherited: false)))
-                        .WithModifiers(InternalSealedTokenList)
+                        .WithModifiers(PublicSealedTokenList)
                         .WithBaseList(SystemAttributeBaseList),
                     ClassDeclaration(Identifier("DependencyPropertyAttribute"))
                         .WithAttributeLists(SingletonList(SystemAttributeUsageList(AttributeTargetsClass, allowMultiple: true, inherited: false)))
-                        .WithModifiers(InternalSealedTokenList)
+                        .WithModifiers(PublicSealedTokenList)
                         .WithTypeParameterList(TypeParameterList(SingletonSeparatedList(
                             TypeParameter(Identifier("T")))))
                         .WithBaseList(SystemAttributeBaseList)
@@ -109,7 +109,7 @@ internal sealed class AttributeGenerator : IIncrementalGenerator
                         ])),
                     ClassDeclaration(Identifier("FieldAccessorAttribute"))
                         .WithAttributeLists(SingletonList(SystemAttributeUsageList(AttributeTargetsProperty, inherited: false)))
-                        .WithModifiers(InternalSealedTokenList)
+                        .WithModifiers(PublicSealedTokenList)
                         .WithBaseList(SystemAttributeBaseList)
                 ]))))
             .NormalizeWhitespace();
@@ -129,7 +129,7 @@ internal sealed class AttributeGenerator : IIncrementalGenerator
                             JetBrainsAnnotationsMeansImplicitUseAttributeList,
                             SystemAttributeUsageList(AttributeTargetsClass, inherited: false)
                         ]))
-                        .WithModifiers(InternalSealedTokenList)
+                        .WithModifiers(PublicSealedTokenList)
                         .WithBaseList(SystemAttributeBaseList)
                         .WithMembers(List<MemberDeclarationSyntax>(
                         [
@@ -149,7 +149,7 @@ internal sealed class AttributeGenerator : IIncrementalGenerator
                         ])),
                     ClassDeclaration(Identifier("PrimaryHttpMessageHandlerAttribute"))
                         .WithAttributeLists(SingletonList(SystemAttributeUsageList(AttributeTargetsClass, inherited: false)))
-                        .WithModifiers(InternalSealedTokenList)
+                        .WithModifiers(PublicSealedTokenList)
                         .WithBaseList(SystemAttributeBaseList)
                         .WithMembers(List<MemberDeclarationSyntax>(
                         [
@@ -214,7 +214,7 @@ internal sealed class AttributeGenerator : IIncrementalGenerator
                 [
                     ClassDeclaration(Identifier("ServiceAttribute"))
                         .WithAttributeLists(SingletonList(SystemAttributeUsageList(AttributeTargetsClass, inherited: false)))
-                        .WithModifiers(InternalSealedTokenList)
+                        .WithModifiers(PublicSealedTokenList)
                         .WithBaseList(SystemAttributeBaseList).WithMembers(List<MemberDeclarationSyntax>(
                         [
                             ConstructorDeclaration(Identifier("ServiceAttribute"))
@@ -236,7 +236,7 @@ internal sealed class AttributeGenerator : IIncrementalGenerator
                         ])),
                     ClassDeclaration(Identifier("FromKeyedServicesAttribute"))
                         .WithAttributeLists(SingletonList(SystemAttributeUsageList(AttributeTargetsFieldAndProperty)))
-                        .WithModifiers(InternalSealedTokenList)
+                        .WithModifiers(PublicSealedTokenList)
                         .WithBaseList(SystemAttributeBaseList)
                         .WithMembers(SingletonList<MemberDeclarationSyntax>(
                             ConstructorDeclaration(Identifier("FromKeyedServicesAttribute"))
@@ -256,11 +256,11 @@ internal sealed class AttributeGenerator : IIncrementalGenerator
                 [
                     ClassDeclaration(Identifier("ExtendedEnumAttribute"))
                         .WithAttributeLists(SingletonList(SystemAttributeUsageList(AttributeTargetsEnum)))
-                        .WithModifiers(InternalSealedTokenList)
+                        .WithModifiers(PublicSealedTokenList)
                         .WithBaseList(SystemAttributeBaseList),
                     ClassDeclaration(Identifier("LocalizationKeyAttribute"))
                         .WithAttributeLists(SingletonList(SystemAttributeUsageList(AttributeTargetsField)))
-                        .WithModifiers(InternalSealedTokenList)
+                        .WithModifiers(PublicSealedTokenList)
                         .WithBaseList(SystemAttributeBaseList)
                         .WithMembers(SingletonList<MemberDeclarationSyntax>(
                             ConstructorDeclaration(Identifier("LocalizationKeyAttribute"))
@@ -279,7 +279,7 @@ internal sealed class AttributeGenerator : IIncrementalGenerator
                 .WithMembers(SingletonList<MemberDeclarationSyntax>(
                     ClassDeclaration(Identifier("InterceptsLocationAttribute"))
                         .WithAttributeLists(SingletonList(SystemAttributeUsageList(AttributeTargetsMethod, allowMultiple: true)))
-                        .WithModifiers(InternalSealedTokenList)
+                        .WithModifiers(PublicSealedTokenList)
                         .WithBaseList(SystemAttributeBaseList)
                         .WithMembers(SingletonList<MemberDeclarationSyntax>(
                             ConstructorDeclaration(Identifier("InterceptsLocationAttribute"))

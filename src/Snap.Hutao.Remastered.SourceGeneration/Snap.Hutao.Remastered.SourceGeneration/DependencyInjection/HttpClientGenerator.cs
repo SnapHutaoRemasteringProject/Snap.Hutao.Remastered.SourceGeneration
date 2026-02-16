@@ -57,7 +57,7 @@ internal sealed class HttpClientGenerator : IIncrementalGenerator
                 .WithLeadingTrivia(NullableEnableTriviaList)
                 .WithMembers(SingletonList<MemberDeclarationSyntax>(
                     ClassDeclaration("ServiceCollectionExtension")
-                        .WithModifiers(InternalStaticPartialTokenList)
+                        .WithModifiers(PublicStaticPartialTokenList)
                         .WithMembers(SingletonList<MemberDeclarationSyntax>(
                             MethodDeclaration(TypeOfMicrosoftExtensionsDependencyInjectionIServiceCollection, "AddHttpClients")
                                 .WithModifiers(PublicStaticPartialTokenList)
