@@ -48,6 +48,8 @@ internal static partial class FastSyntaxFactory
 
     public static SyntaxTokenList PublicReadOnlyTokenList { get; } = SyntaxFactory.TokenList(PublicKeyword, ReadOnlyKeyword);
 
+    public static SyntaxTokenList PublicStaticReadonlyTokenList { get; } = SyntaxFactory.TokenList(PublicKeyword, StaticKeyword, ReadOnlyKeyword);
+
     public static SyntaxTokenList PublicStaticUnsafeTokenList { get; } = SyntaxFactory.TokenList(PublicKeyword, StaticKeyword, UnsafeKeyword);
 
     public static SyntaxTokenList StaticTokenList { get; } = SyntaxFactory.TokenList(StaticKeyword);
