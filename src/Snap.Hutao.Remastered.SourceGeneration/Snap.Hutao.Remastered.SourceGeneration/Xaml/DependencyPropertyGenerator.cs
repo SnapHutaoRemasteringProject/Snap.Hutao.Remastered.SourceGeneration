@@ -141,7 +141,7 @@ internal sealed class DependencyPropertyGenerator : IIncrementalGenerator
                                         IdentifierName("DependencyProperty")),
                                     IdentifierName(isAttached ? "RegisterAttached" : "Register")))
                                 .WithArgumentList(ArgumentList(registerArguments)))))))
-                .WithModifiers(PrivateStaticReadonlyTokenList);
+                .WithModifiers(PublicStaticReadonlyTokenList);
 
             if (!isAttached)
             {
