@@ -7,6 +7,7 @@ using Snap.Hutao.Remastered.SourceGeneration.Extension;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 using static Snap.Hutao.SourceGeneration.Primitive.FastSyntaxFactory;
@@ -40,7 +41,7 @@ internal sealed class BindableCustomPropertyGenerator : IIncrementalGenerator
         }
         catch (Exception ex)
         {
-            production.AddSource($"Error-{Guid.NewGuid().ToString()}.g.cs", ex.ToString());
+            production.ReportDiagnostic(Diagnostic.Create(AotInteropAnalyzer.GenerationFailure, Location.None, context.Hierarchy.MetadataName, ex.Message));
         }
     }
 
@@ -60,14 +61,14 @@ internal sealed class BindableCustomPropertyGenerator : IIncrementalGenerator
                             Parameter(StringType, Identifier("name")))))
                         .WithBody(Block(SingletonList(
                             ReturnStatement(SwitchExpression(IdentifierName("name"))
-                                .WithArms(SeparatedList(GenerateGetPropertySwitchExpressionArms(type, context.Properties, context.Methods))))))),
+                                .WithArms(SeparatedList(GenerateGetPropertySwitchExpressionArms(type, context.Properties, context.Methods, context.HasUnloadFlag))))))),
 
                     // GetProperty(Type)
                     MethodDeclaration(NullableType(bindableCustomPropertyType), Identifier("GetProperty"))
                         .WithModifiers(PublicTokenList)
                         .WithParameterList(ParameterList(SingletonSeparatedList(
                             Parameter(TypeOfSystemType, Identifier("indexParameterType")))))
-                        .WithBody(Block(List(GenerateGetIndexerStatements(type, context.Properties))))
+                        .WithBody(Block(List(GenerateGetIndexerStatements(type, context.Properties, context.HasUnloadFlag))))
                 ],
                 BaseList(SingletonSeparatedList<BaseTypeSyntax>(SimpleBaseType(baseType))))
             .NormalizeWhitespace();
@@ -75,11 +76,12 @@ internal sealed class BindableCustomPropertyGenerator : IIncrementalGenerator
         production.AddSource(context.Hierarchy.FileNameHint, syntax.ToFullStringWithHeader());
     }
 
-    private static IEnumerable<SwitchExpressionArmSyntax> GenerateGetPropertySwitchExpressionArms(TypeSyntax ownerType, EquatableArray<PropertyInfo> properties, EquatableArray<AttributedMethodInfo> methods)
+    private static IEnumerable<SwitchExpressionArmSyntax> GenerateGetPropertySwitchExpressionArms(TypeSyntax ownerType, EquatableArray<PropertyInfo> properties, EquatableArray<AttributedMethodInfo> methods, bool hasUnloadFlag)
     {
+        HashSet<string> emittedNames = new(StringComparer.Ordinal);
         foreach (PropertyInfo property in properties)
         {
-            if (property.IsIndexer)
+            if (property.IsIndexer || property.IsStatic || !emittedNames.Add(property.Name))
             {
                 continue;
             }
@@ -110,9 +112,11 @@ internal sealed class BindableCustomPropertyGenerator : IIncrementalGenerator
                     [
                         LocalDeclarationStatement(VariableDeclaration(ownerType, SingletonSeparatedList(VariableDeclarator("typedInstance")
                             .WithInitializer(EqualsValueClause(UnsafeAsExpression(ownerType, IdentifierName("instance"))))))),
-                        IfStatement(
-                            SimpleMemberAccessExpression(SimpleMemberAccessExpression(IdentifierName("typedInstance"), IdentifierName("IsViewUnloaded")), IdentifierName("Value")),
-                            Block(ReturnStatement())),
+                        hasUnloadFlag
+                            ? IfStatement(
+                                SimpleMemberAccessExpression(SimpleMemberAccessExpression(IdentifierName("typedInstance"), IdentifierName("IsViewUnloaded")), IdentifierName("Value")),
+                                Block(ReturnStatement()))
+                            : EmptyStatement(),
                         ExpressionStatement(SimpleAssignmentExpression(
                             SimpleMemberAccessExpression(
                                 property.IsStatic ? ownerType : IdentifierName("typedInstance"),
@@ -151,6 +155,11 @@ internal sealed class BindableCustomPropertyGenerator : IIncrementalGenerator
                     continue;
                 }
 
+                if (method.Method.IsStatic || !emittedNames.Add(commandName))
+                {
+                    continue;
+                }
+
                 ExpressionSyntax getValue = SimpleLambdaExpression(Parameter(Identifier("instance")))
                     .WithModifiers(StaticTokenList)
                     .WithExpressionBody(SimpleMemberAccessExpression(method.Method.IsStatic
@@ -180,11 +189,12 @@ internal sealed class BindableCustomPropertyGenerator : IIncrementalGenerator
             DefaultLiteralExpression);
     }
 
-    private static IEnumerable<StatementSyntax> GenerateGetIndexerStatements(TypeSyntax ownerType, EquatableArray<PropertyInfo> properties)
+    private static IEnumerable<StatementSyntax> GenerateGetIndexerStatements(TypeSyntax ownerType, EquatableArray<PropertyInfo> properties, bool hasUnloadFlag)
     {
+        HashSet<string> emittedIndexerTypes = new(StringComparer.Ordinal);
         foreach (PropertyInfo property in properties)
         {
-            if (!property.IsIndexer)
+            if (!property.IsIndexer || !emittedIndexerTypes.Add(property.FullyQualifiedIndexerParameterTypeName!))
             {
                 continue;
             }
@@ -222,9 +232,11 @@ internal sealed class BindableCustomPropertyGenerator : IIncrementalGenerator
                     [
                         LocalDeclarationStatement(VariableDeclaration(ownerType, SingletonSeparatedList(VariableDeclarator("typedInstance")
                             .WithInitializer(EqualsValueClause(UnsafeAsExpression(ownerType, IdentifierName("instance"))))))),
-                        IfStatement(
-                            SimpleMemberAccessExpression(SimpleMemberAccessExpression(IdentifierName("typedInstance"), IdentifierName("IsViewUnloaded")), IdentifierName("Value")),
-                            Block(ReturnStatement())),
+                        hasUnloadFlag
+                            ? IfStatement(
+                                SimpleMemberAccessExpression(SimpleMemberAccessExpression(IdentifierName("typedInstance"), IdentifierName("IsViewUnloaded")), IdentifierName("Value")),
+                                Block(ReturnStatement()))
+                            : EmptyStatement(),
                         ExpressionStatement(SimpleAssignmentExpression(ElementAccessExpression(
                                 IdentifierName("typedInstance"),
                                 BracketedArgumentList(SingletonSeparatedList(
@@ -286,9 +298,13 @@ internal sealed class BindableCustomPropertyGenerator : IIncrementalGenerator
 
         public required EquatableArray<AttributedMethodInfo> Methods { get; init; }
 
+        public required bool HasUnloadFlag { get; init; }
+
         public static BindableCustomPropertyGeneratorContext Create(GeneratorAttributeSyntaxContext context, CancellationToken token)
         {
-            if (context.TargetSymbol is not INamedTypeSymbol typeSymbol)
+            if (context.TargetSymbol is not INamedTypeSymbol typeSymbol ||
+                typeSymbol.HasAttributeWithFullyQualifiedMetadataName("WinRT.GeneratedBindableCustomPropertyAttribute") ||
+                !CanGeneratePartialType(typeSymbol))
             {
                 return default!;
             }
@@ -305,7 +321,11 @@ internal sealed class BindableCustomPropertyGenerator : IIncrementalGenerator
                         case SymbolKind.Property:
                             if (member.DeclaredAccessibility is Accessibility.Public)
                             {
-                                propertiesBuilder.Add(PropertyInfo.Create((IPropertySymbol)member));
+                                IPropertySymbol property = (IPropertySymbol)member;
+                                if (!property.IsIndexer || property.Parameters.Length == 1)
+                                {
+                                    propertiesBuilder.Add(PropertyInfo.Create(property));
+                                }
                             }
                             break;
                         case SymbolKind.Method:
@@ -326,7 +346,41 @@ internal sealed class BindableCustomPropertyGenerator : IIncrementalGenerator
                 Hierarchy = HierarchyInfo.Create(typeSymbol),
                 Properties = propertiesBuilder.ToImmutable(),
                 Methods = methodsBuilder.ToImmutable(),
+                HasUnloadFlag = HasReadableUnloadFlag(typeSymbol),
             };
+        }
+
+        private static bool CanGeneratePartialType(INamedTypeSymbol type)
+        {
+            for (INamedTypeSymbol? current = type; current is not null; current = current.ContainingType)
+            {
+                if (current.DeclaringSyntaxReferences.Any(static reference =>
+                    reference.GetSyntax() is not TypeDeclarationSyntax declaration ||
+                    !declaration.Modifiers.Any(static modifier => modifier.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.PartialKeyword))))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static bool HasReadableUnloadFlag(INamedTypeSymbol type)
+        {
+            for (INamedTypeSymbol? current = type; current is not null; current = current.BaseType)
+            {
+                foreach (IPropertySymbol property in current.GetMembers("IsViewUnloaded").OfType<IPropertySymbol>())
+                {
+                    if (!property.IsStatic && property.GetMethod is not null &&
+                        property.Type.GetMembers("Value").OfType<IPropertySymbol>().Any(static value =>
+                            value.Type.SpecialType == SpecialType.System_Boolean && value.GetMethod is not null))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
     }
 }
