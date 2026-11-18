@@ -8,6 +8,7 @@ using Snap.Hutao.SourceGeneration.Primitive;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading;
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 using static Snap.Hutao.SourceGeneration.Primitive.FastSyntaxFactory;
@@ -35,9 +36,25 @@ internal sealed class DependencyPropertyGenerator : IIncrementalGenerator
 
     private static DependencyPropertyGeneratorContext Transform(GeneratorAttributeSyntaxContext context, CancellationToken token)
     {
-        if (context.TargetSymbol is not INamedTypeSymbol typeSymbol)
+        if (context.TargetSymbol is not INamedTypeSymbol typeSymbol ||
+            !IsPartialHierarchy(typeSymbol))
         {
+            // AotInteropAnalyzer reports SHSGAOT001 instead of generating an invalid partial declaration.
             return default!;
+        }
+
+        // Do not generate two members with the same name. The analyzer reports
+        // SHSGAOT007 on the conflicting user declarations.
+        HashSet<string> names = new(StringComparer.Ordinal);
+        foreach (AttributeData attribute in typeSymbol.GetAttributes())
+        {
+            if (attribute.AttributeClass?.HasFullyQualifiedMetadataName(WellKnownMetadataNames.DependencyPropertyAttributeT) is true &&
+                attribute.ConstructorArguments.Length > 0 &&
+                attribute.ConstructorArguments[0].Value is string name &&
+                !names.Add(name))
+            {
+                return default!;
+            }
         }
 
         return DependencyPropertyGeneratorContext.Create(typeSymbol);
@@ -51,7 +68,7 @@ internal sealed class DependencyPropertyGenerator : IIncrementalGenerator
         }
         catch (Exception e)
         {
-            production.AddSource($"Error-{Guid.NewGuid().ToString()}.g.cs", e.ToString());
+            production.ReportDiagnostic(Diagnostic.Create(AotInteropAnalyzer.GenerationFailure, Location.None, context.Hierarchy.MetadataName, e.Message));
         }
     }
 
@@ -224,6 +241,23 @@ internal sealed class DependencyPropertyGenerator : IIncrementalGenerator
                     ])));
             }
         }
+    }
+
+    private static bool IsPartialHierarchy(INamedTypeSymbol type)
+    {
+        for (INamedTypeSymbol? current = type; current is not null; current = current.ContainingType)
+        {
+            foreach (SyntaxReference reference in current.DeclaringSyntaxReferences)
+            {
+                if (reference.GetSyntax() is TypeDeclarationSyntax declaration &&
+                    !declaration.Modifiers.Any(static modifier => modifier.IsKind(Microsoft.CodeAnalysis.CSharp.SyntaxKind.PartialKeyword)))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     private sealed record DependencyPropertyGeneratorContext

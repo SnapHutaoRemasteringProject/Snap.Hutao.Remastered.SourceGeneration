@@ -1,0 +1,18 @@
+name: Source generator regression checks
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  generator-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build generators and run Roslyn regression harness
+        run: dotnet run --configuration Release --project tests/Snap.Hutao.Remastered.SourceGeneration.Tests/Snap.Hutao.Remastered.SourceGeneration.Tests.csproj
