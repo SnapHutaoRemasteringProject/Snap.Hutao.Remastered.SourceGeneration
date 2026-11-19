@@ -238,11 +238,19 @@ internal static class Program
             """;
 
         var (compilation, parseOptions) = CreateCompilation(source);
-        var (generated, output) = Generate(compilation, parseOptions,
-            new BindableCustomPropertyGenerator(), new CommandGenerator());
+        // The binder analyzes the original model. CommandGenerator's property is
+        // emitted by a separate pipeline, so simulate that companion partial at
+        // compilation time without letting it mask the command-method descriptor.
+        var (generated, output) = Generate(compilation, parseOptions, new BindableCustomPropertyGenerator());
         Verify(generated.Contains("nameof(RefreshCommand)", StringComparison.Ordinal), "Static command descriptor was removed.");
         Verify(generated.Contains("Model.RefreshCommand", StringComparison.Ordinal), "Static command getter must access the generated static property.");
-        AssertNoErrors(output);
+        SyntaxTree commandProperty = CSharpSyntaxTree.ParseText("""
+            internal partial class Model
+            {
+                public static CommunityToolkit.Mvvm.Input.RelayCommand RefreshCommand { get; } = new(() => { });
+            }
+            """, parseOptions);
+        AssertNoErrors(output.AddSyntaxTrees(commandProperty));
     }
 
     private static void BinderUsesInheritedFlagValue()
