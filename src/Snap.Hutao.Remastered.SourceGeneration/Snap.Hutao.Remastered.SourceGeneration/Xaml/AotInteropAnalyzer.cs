@@ -122,11 +122,16 @@ internal sealed class AotInteropAnalyzer : DiagnosticAnalyzer
                 context.ReportDiagnostic(Diagnostic.Create(OptInExposureRequired, type.Locations.FirstOrDefault(), type.Name));
             }
 
-            foreach (IPropertySymbol property in type.GetMembers().OfType<IPropertySymbol>())
+            // The binder also inspects inherited properties, so diagnostics must cover
+            // inherited public indexers that would otherwise be silently excluded.
+            for (INamedTypeSymbol? current = type; current is not null; current = current.BaseType)
             {
-                if (property.IsIndexer && property.DeclaredAccessibility == Accessibility.Public && property.Parameters.Length != 1)
+                foreach (IPropertySymbol property in current.GetMembers().OfType<IPropertySymbol>())
                 {
-                    context.ReportDiagnostic(Diagnostic.Create(UnsupportedIndexer, property.Locations.FirstOrDefault(), type.Name, property.Parameters.Length));
+                    if (property.IsIndexer && property.DeclaredAccessibility == Accessibility.Public && property.Parameters.Length != 1)
+                    {
+                        context.ReportDiagnostic(Diagnostic.Create(UnsupportedIndexer, property.Locations.FirstOrDefault(), type.Name, property.Parameters.Length));
+                    }
                 }
             }
         }

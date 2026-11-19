@@ -81,7 +81,7 @@ internal sealed class BindableCustomPropertyGenerator : IIncrementalGenerator
         HashSet<string> emittedNames = new(StringComparer.Ordinal);
         foreach (PropertyInfo property in properties)
         {
-            if (property.IsIndexer || property.IsStatic || !emittedNames.Add(property.Name))
+            if (property.IsIndexer || !emittedNames.Add(property.Name))
             {
                 continue;
             }
@@ -155,7 +155,7 @@ internal sealed class BindableCustomPropertyGenerator : IIncrementalGenerator
                     continue;
                 }
 
-                if (method.Method.IsStatic || !emittedNames.Add(commandName))
+                if (!emittedNames.Add(commandName))
                 {
                     continue;
                 }
@@ -346,7 +346,7 @@ internal sealed class BindableCustomPropertyGenerator : IIncrementalGenerator
                 Hierarchy = HierarchyInfo.Create(typeSymbol),
                 Properties = propertiesBuilder.ToImmutable(),
                 Methods = methodsBuilder.ToImmutable(),
-                HasUnloadFlag = HasReadableUnloadFlag(typeSymbol),
+                HasUnloadFlag = HasReadableUnloadFlag(typeSymbol, context.SemanticModel.Compilation),
             };
         }
 
@@ -365,19 +365,47 @@ internal sealed class BindableCustomPropertyGenerator : IIncrementalGenerator
             return true;
         }
 
-        private static bool HasReadableUnloadFlag(INamedTypeSymbol type)
+        private static bool HasReadableUnloadFlag(INamedTypeSymbol owner, Compilation compilation)
         {
-            for (INamedTypeSymbol? current = type; current is not null; current = current.BaseType)
+            // A derived member named IsViewUnloaded hides an inherited flag even when the
+            // replacement has no readable Value. Stop at the first declaring type.
+            for (INamedTypeSymbol? current = owner; current is not null; current = current.BaseType)
             {
-                foreach (IPropertySymbol property in current.GetMembers("IsViewUnloaded").OfType<IPropertySymbol>())
+                ImmutableArray<ISymbol> members = current.GetMembers("IsViewUnloaded");
+                if (members.IsEmpty)
                 {
-                    if (!property.IsStatic && property.GetMethod is not null &&
-                        property.Type.GetMembers("Value").OfType<IPropertySymbol>().Any(static value =>
-                            value.Type.SpecialType == SpecialType.System_Boolean && value.GetMethod is not null))
+                    continue;
+                }
+
+                foreach (IPropertySymbol flag in members.OfType<IPropertySymbol>())
+                {
+                    if (flag.IsStatic || flag.IsIndexer || flag.GetMethod is null ||
+                        !compilation.IsSymbolAccessibleWithin(flag, owner, owner) ||
+                        !compilation.IsSymbolAccessibleWithin(flag.GetMethod, owner, owner) ||
+                        flag.Type is not INamedTypeSymbol flagType)
                     {
-                        return true;
+                        continue;
+                    }
+
+                    // Value may be declared on a base type of the flag; hiding applies here too.
+                    for (INamedTypeSymbol? valueOwner = flagType; valueOwner is not null; valueOwner = valueOwner.BaseType)
+                    {
+                        ImmutableArray<ISymbol> values = valueOwner.GetMembers("Value");
+                        if (values.IsEmpty)
+                        {
+                            continue;
+                        }
+
+                        return values.OfType<IPropertySymbol>().Any(value =>
+                            !value.IsStatic && !value.IsIndexer &&
+                            value.Type.SpecialType == SpecialType.System_Boolean &&
+                            value.GetMethod is not null &&
+                            compilation.IsSymbolAccessibleWithin(value, owner, flagType) &&
+                            compilation.IsSymbolAccessibleWithin(value.GetMethod, owner, flagType));
                     }
                 }
+
+                return false;
             }
 
             return false;

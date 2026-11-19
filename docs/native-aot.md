@@ -33,6 +33,10 @@ The custom binding generator still uses statically typed property access and `Un
 
 `{Binding}` uses runtime property paths and needs an `ICustomPropertyProvider`-compatible implementation. `{x:Bind}` is compiled and does **not** automatically justify generating a runtime binding provider.
 
+For a step-by-step maintainer review checklist, local NuGet staging instructions, actual Windows Native AOT verification, and a structured results report, see [Developer review and validation](developer-validation.md).
+
+The custom provider retains **static properties** (including their static setter when public) and generated **static commands**, matching the pre-AOT behavior. Unload detection resolves the effective member: a derived member hiding `IsViewUnloaded` prevents fallback to an unrelated base flag; the guard is emitted only when both the flag and Boolean `Value` getters are accessible. Inherited Boolean `Value` properties remain supported. These cases are covered by the Roslyn harness below.
+
 ## Compile-time regression harness
 
 ```powershell
