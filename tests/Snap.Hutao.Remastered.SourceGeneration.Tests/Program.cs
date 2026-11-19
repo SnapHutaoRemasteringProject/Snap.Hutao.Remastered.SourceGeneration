@@ -41,6 +41,14 @@ internal static class Program
             public sealed class GeneratedWinRTExposedTypeAttribute : Attribute { }
         }
 
+        namespace CommunityToolkit.Mvvm.Input
+        {
+            public sealed class RelayCommand
+            {
+                public RelayCommand(Action execute) { }
+            }
+        }
+
         namespace Microsoft.UI.Xaml.Data
         {
             public interface IBindableCustomPropertyImplementation
@@ -88,7 +96,11 @@ internal static class Program
     private static void Main()
     {
         BinderHandlesSimpleModelsAndHiding();
+        BinderPreservesStaticPropertyBindings();
+        BinderPreservesStaticCommandBindings();
         BinderPreservesViewModelUnloadGuard();
+        BinderUsesInheritedFlagValue();
+        BinderDoesNotUseHiddenOrInaccessibleFlags();
         InvalidPartialDeclarationsAreDiagnosedWithoutEmittingInvalidMembers();
         ConflictingProvidersAreDiagnosedWithoutDuplicateImplementations();
         OptInExposureOnlyAppliesToCsWinRT2();
@@ -97,6 +109,7 @@ internal static class Program
         DerivedDependencyPropertyCompiles();
         DuplicateDependencyPropertiesAreDiagnosedAndSkipped();
         UnsupportedIndexersAreDiagnosedAndSkipped();
+        InheritedUnsupportedIndexersAreDiagnosed();
 
         Console.WriteLine("All source generator AOT regression checks passed.");
     }
@@ -115,9 +128,9 @@ internal static class Program
         return (compilation, parseOptions);
     }
 
-    private static (string Source, Compilation Output) Generate(CSharpCompilation compilation, CSharpParseOptions parseOptions, IIncrementalGenerator generator)
+    private static (string Source, Compilation Output) Generate(CSharpCompilation compilation, CSharpParseOptions parseOptions, params IIncrementalGenerator[] generators)
     {
-        GeneratorDriver driver = CSharpGeneratorDriver.Create([generator.AsSourceGenerator()], parseOptions: parseOptions);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generators.Select(generator => generator.AsSourceGenerator()), parseOptions: parseOptions);
         driver = driver.RunGeneratorsAndUpdateCompilation(compilation, out Compilation output, out ImmutableArray<Diagnostic> generatorDiagnostics);
         Verify(!generatorDiagnostics.Any(d => d.Severity == DiagnosticSeverity.Error), "Generator failed: " + string.Join("\n", generatorDiagnostics));
         string source = string.Join("\n", driver.GetRunResult().GeneratedTrees.Select(tree => tree.GetText().ToString()));
@@ -190,6 +203,126 @@ internal static class Program
         var (generated, output) = Generate(compilation, parseOptions, new BindableCustomPropertyGenerator());
         Verify(generated.Contains("typedInstance.IsViewUnloaded.Value", StringComparison.Ordinal), "Existing unload guard lost.");
         AssertNoErrors(output);
+    }
+
+    private static void BinderPreservesStaticPropertyBindings()
+    {
+        const string source = """
+            using Snap.Hutao.Remastered.Core.Annotation;
+
+            [BindableCustomPropertyProvider]
+            internal partial class Model
+            {
+                public static string Kind { get; set; } = "sample";
+            }
+            """;
+
+        var (compilation, parseOptions) = CreateCompilation(source);
+        var (generated, output) = Generate(compilation, parseOptions, new BindableCustomPropertyGenerator());
+        Verify(generated.Contains("nameof(Kind)", StringComparison.Ordinal), "Static property descriptor was removed.");
+        Verify(generated.Contains("Model.Kind", StringComparison.Ordinal), "Static property getter lost its type-qualified access.");
+        AssertNoErrors(output);
+    }
+
+    private static void BinderPreservesStaticCommandBindings()
+    {
+        const string source = """
+            using Snap.Hutao.Remastered.Core.Annotation;
+
+            [BindableCustomPropertyProvider]
+            internal partial class Model
+            {
+                [Command("RefreshCommand")]
+                private static void Refresh() { }
+            }
+            """;
+
+        var (compilation, parseOptions) = CreateCompilation(source);
+        var (generated, output) = Generate(compilation, parseOptions,
+            new BindableCustomPropertyGenerator(), new CommandGenerator());
+        Verify(generated.Contains("nameof(RefreshCommand)", StringComparison.Ordinal), "Static command descriptor was removed.");
+        Verify(generated.Contains("Model.RefreshCommand", StringComparison.Ordinal), "Static command getter must access the generated static property.");
+        AssertNoErrors(output);
+    }
+
+    private static void BinderUsesInheritedFlagValue()
+    {
+        const string source = """
+            using Snap.Hutao.Remastered.Core.Annotation;
+
+            public class FlagBase { public bool Value { get; set; } }
+            public sealed class UnloadFlag : FlagBase { }
+            public class BaseModel { public UnloadFlag IsViewUnloaded { get; } = new(); }
+            [BindableCustomPropertyProvider]
+            internal partial class Model : BaseModel { public string Name { get; set; } = ""; }
+            """;
+
+        var (compilation, parseOptions) = CreateCompilation(source);
+        var (generated, output) = Generate(compilation, parseOptions, new BindableCustomPropertyGenerator());
+        Verify(generated.Contains("typedInstance.IsViewUnloaded.Value", StringComparison.Ordinal),
+            "Guard must discover inherited accessible Boolean Value.");
+        AssertNoErrors(output);
+    }
+
+    private static void BinderDoesNotUseHiddenOrInaccessibleFlags()
+    {
+        const string hidden = """
+            using Snap.Hutao.Remastered.Core.Annotation;
+
+            public class UnloadFlag { public bool Value { get; set; } }
+            public class BaseModel { public UnloadFlag IsViewUnloaded { get; } = new(); }
+            [BindableCustomPropertyProvider]
+            internal partial class Model : BaseModel
+            {
+                public new string IsViewUnloaded { get; set; } = "";
+                public string Name { get; set; } = "";
+            }
+            """;
+
+        const string inaccessibleFlag = """
+            using Snap.Hutao.Remastered.Core.Annotation;
+
+            public class UnloadFlag { public bool Value { get; set; } }
+            public class BaseModel { private UnloadFlag IsViewUnloaded { get; } = new(); }
+            [BindableCustomPropertyProvider]
+            internal partial class Model : BaseModel { public string Name { get; set; } = ""; }
+            """;
+
+        const string inaccessibleGetter = """
+            using Snap.Hutao.Remastered.Core.Annotation;
+
+            public class UnloadFlag { public bool Value { get; set; } }
+            public class BaseModel { public UnloadFlag IsViewUnloaded { private get; set; } = new(); }
+            [BindableCustomPropertyProvider]
+            internal partial class Model : BaseModel { public string Name { get; set; } = ""; }
+            """;
+
+        const string inaccessibleValue = """
+            using Snap.Hutao.Remastered.Core.Annotation;
+
+            public class UnloadFlag { public bool Value { private get; set; } }
+            public class BaseModel { public UnloadFlag IsViewUnloaded { get; } = new(); }
+            [BindableCustomPropertyProvider]
+            internal partial class Model : BaseModel { public string Name { get; set; } = ""; }
+            """;
+
+        const string staticValue = """
+            using Snap.Hutao.Remastered.Core.Annotation;
+
+            public class UnloadFlag { public static bool Value { get; set; } }
+            public class BaseModel { public UnloadFlag IsViewUnloaded { get; } = new(); }
+            [BindableCustomPropertyProvider]
+            internal partial class Model : BaseModel { public string Name { get; set; } = ""; }
+            """;
+
+        foreach (string source in new[] { hidden, inaccessibleFlag, inaccessibleGetter, inaccessibleValue, staticValue })
+        {
+            var (compilation, parseOptions) = CreateCompilation(source);
+            var (generated, output) = Generate(compilation, parseOptions, new BindableCustomPropertyGenerator());
+            Verify(!generated.Contains("typedInstance.IsViewUnloaded.Value", StringComparison.Ordinal),
+                "Generated an invalid or semantically incorrect unload guard.");
+            AssertNoErrors(output);
+        }
     }
 
     private static void InvalidPartialDeclarationsAreDiagnosedWithoutEmittingInvalidMembers()
@@ -330,6 +463,41 @@ internal static class Program
         AssertDiagnostic(Diagnose(compilation), "SHSGAOT005");
         var (_, output) = Generate(compilation, parseOptions, new BindableCustomPropertyGenerator());
         AssertNoErrors(output);
+    }
+
+    private static void InheritedUnsupportedIndexersAreDiagnosed()
+    {
+        const string source = """
+            using Snap.Hutao.Remastered.Core.Annotation;
+
+            public class BaseModel
+            {
+                public int this[int first, int second] { get => first + second; set { } }
+            }
+
+            [BindableCustomPropertyProvider]
+            internal partial class Model : BaseModel
+            {
+                public int this[int index] { get => index; set { } }
+            }
+            """;
+
+        var (compilation, parseOptions) = CreateCompilation(source);
+        AssertDiagnostic(Diagnose(compilation), "SHSGAOT005");
+        var (_, output) = Generate(compilation, parseOptions, new BindableCustomPropertyGenerator());
+        AssertNoErrors(output);
+
+        const string supported = """
+            using Snap.Hutao.Remastered.Core.Annotation;
+
+            public class BaseModel { public int this[int index] { get => index; set { } } }
+            [BindableCustomPropertyProvider]
+            internal partial class Model : BaseModel { public int Name { get; set; } }
+            """;
+
+        var (accepted, _) = CreateCompilation(supported);
+        Verify(Diagnose(accepted).All(d => d.Id != "SHSGAOT005"),
+            "Inherited one-parameter indexers must remain supported.");
     }
 
     private sealed class TestConfigProvider(bool optIn) : AnalyzerConfigOptionsProvider

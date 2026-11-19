@@ -11,3 +11,5 @@ Use https://roslynquoter.azurewebsites.net/ to get SyntaxTree
 ## Native AOT and WinUI
 
 For CsWinRT 2.x/3.x compatibility requirements, XAML binding contracts, diagnostics, and Roslyn smoke tests, see [Native AOT compatibility](docs/native-aot.md).
+
+For reproducible build commands, reviewer test cases, evidence requirements, and a **manual Windows Native AOT acceptance checklist**, see [Developer review and validation](docs/developer-validation.md).
