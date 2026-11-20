@@ -13,7 +13,7 @@ using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 using static Snap.Hutao.SourceGeneration.Primitive.FastSyntaxFactory;
 
 namespace Snap.Hutao.Remastered.SourceGeneration.Automation;
-
+/*
 [Generator(LanguageNames.CSharp)]
 internal sealed class SaltConstantGenerator : IIncrementalGenerator
 {
@@ -92,3 +92,4 @@ internal sealed class SaltConstantGenerator : IIncrementalGenerator
     }
     // ReSharper restore InconsistentNaming
 }
+*/
