@@ -18,7 +18,7 @@ Primary references: [issue #1](https://github.com/SnapHutaoRemasteringProject/Sn
 
 ## 2. Run regression checks (Linux, macOS, Windows)
 
-Install the .NET 10 SDK (the repository's CI uses `10.0.x`). From the source-generator repository root:
+Install the .NET 11 SDK, which the regression workflow also uses. The test harness and analyzer resolve the same Roslyn version from `Directory.Build.props`. From the source-generator repository root:
 
 ```powershell
 dotnet --info
@@ -42,28 +42,18 @@ Review source and generated output for these regression cases:
 
 The test harness intentionally uses **minimal fake** WinUI/CsWinRT contracts. It does **not** compile against the real Windows App SDK or validate ABI marshalling.
 
-## 3. Stage the exact reviewed package for the application
+## 3. Consume the released package in the application
 
-**Do not test NuGet release `1.3.17` and claim to have tested PR #2.** As of this guide, the application branch `feat/aot-compatible` centrally pins `Snap.Hutao.Remastered.SourceGeneration` **1.3.17**, which does not include these PR changes.
+The generator repository publishes `Snap.Hutao.Remastered.SourceGeneration` from `main` using its NuGet workflow. The application pins the released version in its root `Directory.Packages.props`. For this change the release version is `1.3.19`.
 
-Recommended safe local workflow (Windows PowerShell; separate source-generator and application checkouts):
-
-```powershell
-# Run in the source-generator checkout, with PR #2 checked out.
-$feed = Join-Path $PWD "artifacts/local-nuget"
-New-Item -ItemType Directory -Force -Path $feed | Out-Null
-dotnet pack src/Snap.Hutao.Remastered.SourceGeneration/Snap.Hutao.Remastered.SourceGeneration/Snap.Hutao.Remastered.SourceGeneration.csproj -c Release -p:PackageVersion=1.3.18-aotreview.1 -o $feed
-```
-
-In the **application checkout only**, temporarily change `Directory.Packages.props` to use `1.3.18-aotreview.1` for `Snap.Hutao.Remastered.SourceGeneration`. Add `$feed` as an **additional NuGet source** to your local NuGet configuration. Keep the application's other package sources (this is not an invitation to replace `NuGet.Config` or alter production dependency versions).
-
-Verify that `obj/project.assets.json` resolves **the locally packed** generator package, not a cached 1.3.17. Record the package version, branch and commit SHA. Restore the application's original `Directory.Packages.props` and local feed configuration after validation; do not commit these temporary pinning edits to the consuming application.
-
-Alternative: use an explicit local analyzer project reference in a disposable application validation branch; ensure only **one** version of the source generator is loaded. Merely checking out the PR branch alongside the app does not change the app's NuGet package.
+1. Let the generator's regression workflow complete on the PR and check the main-branch publish workflow after merge.
+2. Confirm NuGet.org resolves `Snap.Hutao.Remastered.SourceGeneration` 1.3.19. Update the existing version entry in the application and restore the application with its normal configured package sources.
+3. Open the application's `obj/project.assets.json` and find `Snap.Hutao.Remastered.SourceGeneration/1.3.19`. Record the application commit and package version with any validation logs.
+4. Build on Windows, then publish to a fresh output directory and test the UI as described below. The source package is a compiler dependency; it does not travel in the finished app or the plugin packages.
 
 ## 4. Compile and publish with the real Windows toolchain
 
-Prerequisites: Windows, .NET 11 SDK, Windows SDK and VC++ toolchain required by the application, its Windows App SDK dependencies, and the separately staged generator. Verify the currently checked out application branch's pinned versions; it currently uses **CsWinRT 2.3.1** and **Windows App SDK 2.6.6-experimental**, with `win-x64` and `net11.0-windows10.0.26100.0`.
+Prerequisites: Windows, .NET 11 SDK, Windows SDK and VC++ toolchain required by the application, its Windows App SDK dependencies, and the matching published source-generator package. Verify the currently checked out application branch's pinned versions; it currently uses **CsWinRT 2.3.1** and **Windows App SDK 2.6.6-experimental**, with `win-x64` and `net11.0-windows10.0.26100.0`.
 
 From the **application repository root**:
 
